@@ -136,7 +136,7 @@ export default class LiteTable extends Component {
     if(hour >= 5 && hour <= 8){
       this.toMark();
     }else{
-      this.toMark();
+      // this.toMark();
       Toast.error("抱歉已经过了打卡时间!点击“我要早起”再次挑战自己吧！");
     }
   }

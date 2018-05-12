@@ -1,22 +1,177 @@
-# ice-scaffold-lite
+# 基于星云链的游戏--早起的鸟儿有虫吃 [体验地址](http://www.nanayun.cn/morningBird.html#/)
 
-> 使用文档
+![](http://cdn.binghai.site/o_1cdag2idr1mqshe3c4fj26kcaa.png)
 
-使用:
+### 智能合约
+```
+'use strict';
 
-* 启动调试服务: `npm start`
-* 构建 dist: `npm run build`
+var Record = function (text) {
+  if (text) {
+    var o = JSON.parse(text);
+    this.payDay = o.payDay;
+    this.from = o.from;
+    this.idx = o.idx;
+    this.tag = o.tag;
+    this.payMuch = new BigNumber(o.payMuch);
+  }
+};
 
-目录结构:
 
-* react-router @4.x 默认采用 hashHistory 的单页应用
-* 入口文件: `src/index.js`
-* 导航配置: `src/menuConfig.js`
-* 路由配置: `src/routerConfig.js`
-* 路由入口: `src/router.jsx`
-* 布局文件: `src/layouts`
-* 通用组件: `src/components`
-* 页面文件: `src/pages`
+Record.prototype = {
+  toString: function () {
+    return JSON.stringify(this);
+  }
+};
 
-效果图:
-![screenshot](https://img.alicdn.com/tfs/TB1IM1JmuuSBuNjy1XcXXcYjFXa-1920-1080.png)
+var MorningBoard = function(){
+	// 奖池
+	LocalContractStorage.defineProperty(this, "jackpot");
+	LocalContractStorage.defineProperty(this, "recordCounter");
+	LocalContractStorage.defineMapProperty(this, "mainBoard", {
+    parse: function (text) {
+      return new Record(text);
+    },
+    stringify: function (o) {
+      return o.toString();
+    }
+  });
+
+}
+
+MorningBoard.prototype = {
+  init: function () {
+  	this.jackpot = new BigNumber(0);
+  	this.recordCounter = 0;
+  },
+
+  // 付钱参与
+  participate:function(){
+  	var from = Blockchain.transaction.from;
+  	var value = new BigNumber(Blockchain.transaction.value);
+  	var standard = new BigNumber(1000000000000000);
+
+
+  	if(value < standard){
+  		return "do not pay less than 0.001 nas,or your pay will be nothing.";
+  	}
+
+  	this.jackpot = value.plus(this.jackpot);
+
+  	var rec = new Record();
+
+  	rec.payDay = this._getDay();
+  	rec.payMuch = value;
+  	rec.idx = this._nextIndex();
+  	rec.tag = 0;
+  	rec.from = from;
+
+  	this.mainBoard.put(rec.idx,rec);
+
+  	return "success";
+  },
+
+  _getHour:function(){
+  	var ts = Blockchain.transaction.timestamp;
+  	var hour = parseInt((ts/3600)%24+8);
+  	return hour;
+  },
+
+  _getDay:function(){
+	var ts = Blockchain.transaction.timestamp;
+  	var day = parseInt(ts/86400);
+  	return day;
+  },
+
+  _getMinute:function(){
+  	var ts = Blockchain.transaction.timestamp;
+  	var minute = parseInt(ts%3600/60);
+  	return minute;
+  },
+
+  _nextIndex:function(){
+  	return this.recordCounter++;
+  },
+
+  // 打卡
+  morning:function(){
+  	if(this._getHour() < 5 || this._getHour() > 8){
+  		throw new Error("your can not punch the clock at this time :"+this._getHour());
+  	}
+
+  	var from = Blockchain.transaction.from;
+  	var yesterday = this._getDay()-1;
+
+  	for(var i = 0; i < this.recordCounter;i++){
+  		var item = this.mainBoard.get(i);
+  
+  		if(item.payDay == yesterday && item.tag == 0 && item.from == from){
+  			item.tag = 1;
+  			this.mainBoard.put(item.idx,item);
+  			return "success";
+  		}
+
+  		if(item.payDay == yesterday && item.tag == 1){
+  			return "well,you marked 2 twice,so the secode one will be ignore!";
+  		}
+  	}
+
+  	throw new Error("you did not participate yesterday!");
+  },
+
+  //领钱
+  distribution:function(){
+  	if(this._getHour < 8){
+  		throw new Error('can not pull money befor 8:00 !');
+  	}
+
+  	var yesterday = this._getDay()-1;
+  	var memberSum = 0;
+  	var addressList = [];
+  	var sum = new BigNumber(0);
+
+  	for(var i = 0; i < this.recordCounter;i++){
+  		var item = this.mainBoard.get(i);
+  		if(item.payDay == yesterday && item.tag == 1){
+  			memberSum++;
+  			sum += item.payMuch;
+  			item.tag = 2;
+  			this.mainBoard.put(item.idx,item);
+  			addressList.push(item.from);
+  		}
+  	}
+
+  	if(memberSum == 0){
+  		throw new Error("no member played yesterday!");
+  	}
+
+  	var every = (sum/memberSum).toFixed(4);
+  	for(var i = 0;i < memberSum;i++){
+  		Blockchain.transfer(addressList[i], every);
+  	}
+
+  	this.jackpot -= sum;
+  	return "success";
+  },
+
+  // 付过钱的用户
+  memberList:function(){
+  	var list = [];
+  	for(var i = 0; i < this.recordCounter;i++){
+  		list.push(this.mainBoard.get(i));
+  	}
+  	return list;
+  },
+
+  getJackpot:function(){
+  	return this.jackpot;
+  },
+
+  recordLength:function(){
+  	return this.recordCounter;
+  },
+
+ }
+
+ module.exports = MorningBoard;
+```
