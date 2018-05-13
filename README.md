@@ -73,7 +73,7 @@ MorningBoard.prototype = {
 
   _getHour:function(){
   	var ts = Blockchain.transaction.timestamp;
-  	var hour = parseInt((ts/3600)%24+8);
+  	var hour = parseInt(((ts/3600)%24+8)%24);
   	return hour;
   },
 
