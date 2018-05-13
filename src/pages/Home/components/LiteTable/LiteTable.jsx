@@ -42,7 +42,7 @@ export default class LiteTable extends Component {
       contract:"",
       net:"",
       visible:false,
-      content:"点击“我要早起”，最低支付0.001NAS即可参与早起挑战！明天早5点至早8点间打卡就算打卡成功，打卡成功后记得在8点之后来收奖金哦！奖金计算规则为：前一日入奖池总额/前一日参与成功且今日成功打卡的人数，即未在参与后第二天早上打卡的群众，他们支付的财产将被平均分给成功打卡的人！所以，尽力早起吧少年！  注：今日序号是自1970-01-01至今的天数.",
+      content:"点击“我要早起”，最低支付0.001NAS即可参与早起挑战！明天早5点至早8点间打卡就算打卡成功，打卡成功后记得在9点之后来收奖金哦！奖金计算规则为：前一日入奖池总额/前一日参与成功且今日成功打卡的人数，即未在参与后第二天早上打卡的群众，他们支付的财产将被平均分给成功打卡的人！所以，尽力早起吧少年！  注：今日序号是自1970-01-01至今的天数.",
 
     };
   }
@@ -131,12 +131,14 @@ export default class LiteTable extends Component {
   }
 
   mark = ()=>{
-    var ts = new Date().getTime()/1000;
-    var hour = parseInt((ts/3600)%24+8);
-    if(hour >= 5 && hour <= 8){
+    var ts = parseInt(new Date().getTime()/1000);
+
+    var hour = parseInt(((ts/3600)%24+8)%24);
+    if(hour >= 5 && hour < 8){
       this.toMark();
     }else{
       // this.toMark();
+      console.log("now time:"+hour);
       Toast.error("抱歉已经过了打卡时间!点击“我要早起”再次挑战自己吧！");
     }
   }
@@ -167,8 +169,8 @@ export default class LiteTable extends Component {
   pull = ()=>{
     var ts = new Date().getTime()/1000;
     var hour = parseInt((ts/3600)%24+8);
-    if(hour <= 8){
-      Toast.error("打卡成功后，请在8点之后领取奖金！");
+    if(hour < 9){
+      Toast.success("如您打卡成功，请在9点之后领取奖金！");
       return;
     }
     console.log(this.state);
